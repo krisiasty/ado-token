@@ -48,13 +48,14 @@ func main() {
 	for {
 		state.recordAttempt()
 
-		next, refreshErr := doRefresh(ctx, logger, cfg, kube)
+		next, refreshErr := doRefresh(ctx, cfg, kube)
 		if refreshErr != nil {
-			logger.Error("token refresh failed", "error", refreshErr, "retry_in", retryInterval)
 			next = retryInterval
+			state.recordFailure(next)
+			logger.Error("token refresh failed", "error", refreshErr, "retry_in", next)
 		} else {
-			state.recordSuccess()
-			logger.Info("token refreshed", "next_refresh_in", next)
+			state.recordSuccess(next)
+			logger.Info("token refreshed", "next_refresh_in", next.Round(time.Second).String())
 		}
 
 		select {
@@ -66,7 +67,7 @@ func main() {
 	}
 }
 
-func doRefresh(ctx context.Context, logger *slog.Logger, cfg *config.Config, kube kubernetes.Interface) (time.Duration, error) {
+func doRefresh(ctx context.Context, cfg *config.Config, kube kubernetes.Interface) (time.Duration, error) {
 	creds, err := kubeclient.ReadCredentials(ctx, kube, cfg.CredentialsSecretNamespace, cfg.CredentialsSecretName)
 	if err != nil {
 		return 0, err
@@ -100,32 +101,39 @@ func nextRefreshInterval(expiresAt time.Time, override time.Duration) time.Durat
 
 // healthState tracks the refresh loop state for probe endpoints.
 type healthState struct {
-	mu          sync.RWMutex
-	lastAttempt time.Time
-	ready       bool
+	mu            sync.RWMutex
+	nextAttemptAt time.Time
+	ready         bool
 }
 
 func (s *healthState) recordAttempt() {
 	s.mu.Lock()
-	s.lastAttempt = time.Now()
+	s.nextAttemptAt = time.Time{} // clear while attempt is in progress
 	s.mu.Unlock()
 }
 
-func (s *healthState) recordSuccess() {
+func (s *healthState) recordSuccess(next time.Duration) {
 	s.mu.Lock()
 	s.ready = true
+	s.nextAttemptAt = time.Now().Add(next)
 	s.mu.Unlock()
 }
 
-// isLive returns true if the refresh loop has made an attempt recently.
-// The threshold is 2× the retry interval to tolerate slow AAD responses.
+func (s *healthState) recordFailure(next time.Duration) {
+	s.mu.Lock()
+	s.nextAttemptAt = time.Now().Add(next)
+	s.mu.Unlock()
+}
+
+// isLive returns true if the refresh loop is on schedule.
+// A 2× retryInterval grace window absorbs slow AAD responses.
 func (s *healthState) isLive() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if s.lastAttempt.IsZero() {
-		return true // still in startup
+	if s.nextAttemptAt.IsZero() {
+		return true // startup or attempt in progress
 	}
-	return time.Since(s.lastAttempt) < 2*retryInterval
+	return time.Now().Before(s.nextAttemptAt.Add(2 * retryInterval))
 }
 
 func (s *healthState) isReady() bool {

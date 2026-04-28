@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	adoScope        = "499b84ac-1321-427f-aa17-267ca6975798/.default"
-	tokenURLPattern = "https://login.microsoftonline.com/%s/oauth2/v2.0/token" //nolint:gosec
+	adoScope    = "499b84ac-1321-427f-aa17-267ca6975798/.default"
+	aadBaseURL  = "https://login.microsoftonline.com" //nolint:gosec
 )
 
 type Token struct {
@@ -28,7 +28,10 @@ type tokenResponse struct {
 }
 
 func FetchToken(tenantID, clientID, clientSecret string) (*Token, error) {
-	endpoint := fmt.Sprintf(tokenURLPattern, url.PathEscape(tenantID))
+	endpoint, err := url.JoinPath(aadBaseURL, tenantID, "oauth2/v2.0/token")
+	if err != nil {
+		return nil, fmt.Errorf("building token endpoint: %w", err)
+	}
 
 	body := url.Values{
 		"grant_type":    {"client_credentials"},

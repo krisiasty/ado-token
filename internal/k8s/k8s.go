@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -78,20 +79,28 @@ func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace
 	}, nil
 }
 
-func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, name, key, token string) error {
+func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, name string, fields map[string]string) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		existing, err := client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("getting output secret %s/%s: %w", namespace, name, err)
 		}
 
-		updated := existing.DeepCopy()
-		if updated.Data == nil {
-			updated.Data = make(map[string][]byte)
+		data := make(map[string][]byte, len(fields))
+		for k, v := range fields {
+			data[k] = []byte(v)
 		}
-		updated.Data[key] = []byte(token)
 
-		_, err = client.CoreV1().Secrets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            name,
+				Namespace:       namespace,
+				ResourceVersion: existing.ResourceVersion,
+			},
+			Data: data,
+		}
+
+		_, err = client.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
 		if err != nil {
 			return fmt.Errorf("updating output secret %s/%s: %w", namespace, name, err)
 		}

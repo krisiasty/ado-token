@@ -11,10 +11,10 @@ credentialsSecret:
   namespace: ""  # defaults to Release namespace
 
 # Secret that will be created and kept up to date with the bearer token.
+# Keys written: `username` (always "bearer") and `password` (the token).
 outputSecret:
   name: ado-token
   namespace: ""  # defaults to Release namespace
-  key: token
 
 # Optional cap on the refresh interval (e.g. "30m").
 # When unset, the token is refreshed at 80% of its expires_in TTL.

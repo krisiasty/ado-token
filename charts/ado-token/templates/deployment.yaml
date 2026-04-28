@@ -36,8 +36,6 @@ spec:
               value: {{ .Values.outputSecret.name | quote }}
             - name: OUTPUT_SECRET_NAMESPACE
               value: {{ include "ado-token.outputNamespace" . | quote }}
-            - name: OUTPUT_SECRET_KEY
-              value: {{ .Values.outputSecret.key | quote }}
             - name: HEALTH_PORT
               value: {{ .Values.health.port | quote }}
             {{- if .Values.refreshInterval }}

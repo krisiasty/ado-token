@@ -13,15 +13,13 @@ type Config struct {
 	CredentialsSecretNamespace string
 	OutputSecretName           string
 	OutputSecretNamespace      string
-	OutputSecretKey            string
 	RefreshInterval            time.Duration // 0 means: derive from expires_in
 	HealthPort                 string
 }
 
 func Load(logger *slog.Logger) (*Config, error) {
 	cfg := &Config{
-		OutputSecretKey: envOrDefault(logger, "OUTPUT_SECRET_KEY", "token"),
-		HealthPort:      envOrDefault(logger, "HEALTH_PORT", "8080"),
+		HealthPort: envOrDefault(logger, "HEALTH_PORT", "8080"),
 	}
 
 	required := []struct {

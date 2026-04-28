@@ -107,7 +107,6 @@ All configuration is provided via environment variables:
 | `CREDENTIALS_SECRET_NAMESPACE` | yes | | Namespace of the credentials secret |
 | `OUTPUT_SECRET_NAME` | yes | | Name of the secret to write the token into |
 | `OUTPUT_SECRET_NAMESPACE` | yes | | Namespace of the output secret |
-| `OUTPUT_SECRET_KEY` | no | `token` | Key within the output secret |
 | `REFRESH_INTERVAL` | no | | Cap on refresh interval, e.g. `30m`. Defaults to 80% of token TTL |
 | `HEALTH_PORT` | no | `8080` | Port for `/livez` and `/readyz` health endpoints |
 
@@ -120,15 +119,25 @@ All configuration is provided via environment variables:
 
 ## Usage with ArgoCD Image Updater
 
-Reference the output secret in your ArgoCD Application annotations:
+ArgoCD Image Updater commits updated image tags back to git after detecting new images.
+For repositories hosted on Azure DevOps, it needs a bearer token to authenticate — and
+that token is what this helper keeps fresh.
+
+Point the Application's `write-back-method` at the output secret:
 
 ```yaml
-argocd-image-updater.argoproj.io/image-list: myimage=your-registry/your-image
-argocd-image-updater.argoproj.io/myimage.pull-secret: secret:argocd/ado-token#token
+metadata:
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: myimage=your-registry/your-image
+    argocd-image-updater.argoproj.io/write-back-method: git:secret:argocd/ado-token
+    argocd-image-updater.argoproj.io/git-branch: main
 ```
 
-ArgoCD Image Updater reads the secret via the Kubernetes API on each poll cycle, so
-token rotation is picked up automatically without restarting any pods.
+Image Updater expects the referenced secret to contain a `username` and a `password`.
+The helper writes both by default — the rotating bearer token into `password` and a
+static identifier into `username` — so the integration works with no extra
+configuration. Image Updater reads the secret via the Kubernetes API on each poll
+cycle, so token rotation is picked up automatically without restarting any pods.
 
 ## RBAC notes
 

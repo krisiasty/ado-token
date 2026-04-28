@@ -32,7 +32,6 @@ spec:
               value: ado-token
             - name: OUTPUT_SECRET_NAMESPACE
               value: argocd
-            # OUTPUT_SECRET_KEY defaults to "token"
             # REFRESH_INTERVAL is optional, e.g. "30m" (acts as a cap on expires_in*0.8)
             # HEALTH_PORT defaults to "8080"
           securityContext:

@@ -103,7 +103,11 @@ func doRefresh(ctx context.Context, cfg *config.Config, kube kubernetes.Interfac
 		return 0, err
 	}
 
-	if err := kubeclient.UpdateSecret(ctx, kube, cfg.OutputSecretNamespace, cfg.OutputSecretName, cfg.OutputSecretKey, token.AccessToken); err != nil {
+	fields := map[string]string{
+		"username": "bearer",
+		"password": token.AccessToken,
+	}
+	if err := kubeclient.UpdateSecret(ctx, kube, cfg.OutputSecretNamespace, cfg.OutputSecretName, fields); err != nil {
 		return 0, err
 	}
 

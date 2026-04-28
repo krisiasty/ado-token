@@ -25,13 +25,22 @@ TTL). An optional `REFRESH_INTERVAL` cap can be set to refresh more frequently.
 - Service principal with access to Azure DevOps
 - A secret containing the service principal credentials (creation is out of scope —
   provide it via `kubectl`, Sealed Secrets, External Secrets Operator, or any other
-  mechanism):
+  mechanism). Expected keys:
 
 ```yaml
-# expected keys
 tenant_id: <tenant-id>
 client_id: <client-id>
 client_secret: <client-secret>
+```
+
+  Example using kubectl:
+
+```bash
+kubectl create secret generic ado-credentials \
+  --namespace argocd \
+  --from-literal=tenant_id=<tenant-id> \
+  --from-literal=client_id=<client-id> \
+  --from-literal=client_secret=<client-secret>
 ```
 
 ### Helm (recommended)

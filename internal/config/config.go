@@ -22,18 +22,21 @@ func Load() (*Config, error) {
 		HealthPort:      getEnvOrDefault("HEALTH_PORT", "8080"),
 	}
 
-	required := map[string]*string{
-		"CREDENTIALS_SECRET_NAME":      &cfg.CredentialsSecretName,
-		"CREDENTIALS_SECRET_NAMESPACE": &cfg.CredentialsSecretNamespace,
-		"OUTPUT_SECRET_NAME":           &cfg.OutputSecretName,
-		"OUTPUT_SECRET_NAMESPACE":      &cfg.OutputSecretNamespace,
+	required := []struct {
+		env string
+		dst *string
+	}{
+		{"CREDENTIALS_SECRET_NAME", &cfg.CredentialsSecretName},
+		{"CREDENTIALS_SECRET_NAMESPACE", &cfg.CredentialsSecretNamespace},
+		{"OUTPUT_SECRET_NAME", &cfg.OutputSecretName},
+		{"OUTPUT_SECRET_NAMESPACE", &cfg.OutputSecretNamespace},
 	}
-	for env, dst := range required {
-		v := os.Getenv(env)
+	for _, r := range required {
+		v := os.Getenv(r.env)
 		if v == "" {
-			return nil, fmt.Errorf("required environment variable %s is not set", env)
+			return nil, fmt.Errorf("required environment variable %s is not set", r.env)
 		}
-		*dst = v
+		*r.dst = v
 	}
 
 	if raw := os.Getenv("REFRESH_INTERVAL"); raw != "" {

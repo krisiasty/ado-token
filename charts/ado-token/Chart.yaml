@@ -2,8 +2,8 @@ apiVersion: v2
 name: ado-token
 description: Kubernetes helper that refreshes an Azure DevOps bearer token into a Kubernetes secret
 type: application
-version: 0.1.0
-appVersion: "latest"
+version: 1.0.0
+appVersion: "v1.0.0"
 home: https://github.com/krisiasty/ado-token
 sources:
   - https://github.com/krisiasty/ado-token

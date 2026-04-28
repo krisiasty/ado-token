@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,6 +21,9 @@ type Credentials struct {
 func NewClient() (kubernetes.Interface, error) {
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
+		if !errors.Is(err, rest.ErrNotInCluster) {
+			return nil, fmt.Errorf("in-cluster config failed: %w", err)
+		}
 		cfg, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			clientcmd.NewDefaultClientConfigLoadingRules(),
 			nil,
@@ -66,12 +70,10 @@ func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace
 }
 
 func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, name, key, token string) error {
-	op := "updating"
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		op = "getting"
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		existing, err := client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			return err
+			return fmt.Errorf("getting output secret %s/%s: %w", namespace, name, err)
 		}
 
 		updated := existing.DeepCopy()
@@ -80,12 +82,10 @@ func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, n
 		}
 		updated.Data[key] = []byte(token)
 
-		op = "updating"
 		_, err = client.CoreV1().Secrets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-		return err
+		if err != nil {
+			return fmt.Errorf("updating output secret %s/%s: %w", namespace, name, err)
+		}
+		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("%s output secret %s/%s: %w", op, namespace, name, err)
-	}
-	return nil
 }

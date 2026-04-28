@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -180,7 +181,7 @@ func runHealthServer(ctx context.Context, logger *slog.Logger, port string, stat
 		_ = srv.Shutdown(shutCtx)
 	}()
 
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Error("health server error", "error", err)
 	}
 }

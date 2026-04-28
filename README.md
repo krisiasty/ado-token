@@ -23,17 +23,51 @@ TTL). An optional `REFRESH_INTERVAL` cap can be set to refresh more frequently.
 
 - Kubernetes cluster
 - Service principal with access to Azure DevOps
-- Credentials secret created in the target namespace:
+- A secret containing the service principal credentials (creation is out of scope —
+  provide it via `kubectl`, Sealed Secrets, External Secrets Operator, or any other
+  mechanism):
 
-```bash
-kubectl create secret generic ado-credentials \
-  --namespace argocd \
-  --from-literal=tenant_id=<tenant-id> \
-  --from-literal=client_id=<client-id> \
-  --from-literal=client_secret=<client-secret>
+```yaml
+# expected keys
+tenant_id: <tenant-id>
+client_id: <client-id>
+client_secret: <client-secret>
 ```
 
-### Apply manifests
+### Helm (recommended)
+
+```bash
+helm install ado-token ./charts/ado-token \
+  --namespace argocd \
+  --set credentialsSecret.name=ado-credentials \
+  --set outputSecret.name=ado-token \
+  --set image.tag=v1.0.0
+```
+
+#### ArgoCD
+
+Use `deploy/argocd-application.yaml` as a starting point, adjusting the values inline
+or via a separate `values.yaml` per cluster:
+
+```bash
+kubectl apply -f deploy/argocd-application.yaml
+```
+
+#### Key chart values
+
+| Value | Default | Description |
+| --- | --- | --- |
+| `image.repository` | `ghcr.io/krisiasty/ado-token` | Image repository |
+| `image.tag` | Chart `appVersion` | Image tag |
+| `credentialsSecret.name` | `ado-credentials` | Secret with service principal credentials |
+| `credentialsSecret.namespace` | Release namespace | Override if credentials live elsewhere |
+| `outputSecret.name` | `ado-token` | Secret to write the bearer token into |
+| `outputSecret.namespace` | Release namespace | Override if output secret lives elsewhere |
+| `outputSecret.key` | `token` | Key within the output secret |
+| `refreshInterval` | _(unset)_ | Cap on refresh interval, e.g. `30m` |
+| `health.port` | `8080` | Port for `/livez` and `/readyz` |
+
+### Plain manifests
 
 ```bash
 # RBAC (ServiceAccount, Role, RoleBinding)
@@ -42,11 +76,11 @@ kubectl apply -f deploy/rbac.yaml
 # Pre-create the output secret (required before the helper starts)
 kubectl apply -f deploy/secret.yaml
 
-# Controller deployment
+# Deployment
 kubectl apply -f deploy/deployment.yaml
 ```
 
-The default manifest deploys into the `argocd` namespace. Edit the `namespace` fields
+The default manifests deploy into the `argocd` namespace. Edit the `namespace` fields
 in all three files if you need a different namespace, and update the `resourceNames` in
 `deploy/rbac.yaml` if you use different secret names.
 

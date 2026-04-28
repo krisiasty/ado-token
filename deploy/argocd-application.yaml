@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ado-token
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/krisiasty/ado-token
+    targetRevision: HEAD
+    path: charts/ado-token
+    helm:
+      values: |
+        image:
+          tag: "v1.0.0"
+        credentialsSecret:
+          name: ado-credentials
+        outputSecret:
+          name: ado-token
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

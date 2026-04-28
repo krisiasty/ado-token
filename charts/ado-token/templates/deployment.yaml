@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ado-token.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ado-token.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "ado-token.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "ado-token.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ado-token.name" . }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ado-token
+          image: {{ include "ado-token.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: CREDENTIALS_SECRET_NAME
+              value: {{ .Values.credentialsSecret.name | quote }}
+            - name: CREDENTIALS_SECRET_NAMESPACE
+              value: {{ include "ado-token.credentialsNamespace" . | quote }}
+            - name: OUTPUT_SECRET_NAME
+              value: {{ .Values.outputSecret.name | quote }}
+            - name: OUTPUT_SECRET_NAMESPACE
+              value: {{ include "ado-token.outputNamespace" . | quote }}
+            - name: OUTPUT_SECRET_KEY
+              value: {{ .Values.outputSecret.key | quote }}
+            - name: HEALTH_PORT
+              value: {{ .Values.health.port | quote }}
+            {{- if .Values.refreshInterval }}
+            - name: REFRESH_INTERVAL
+              value: {{ .Values.refreshInterval | quote }}
+            {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: {{ .Values.health.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.health.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

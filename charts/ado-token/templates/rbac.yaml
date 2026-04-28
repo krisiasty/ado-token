@@ -1,0 +1,75 @@
+{{- $credNS := include "ado-token.credentialsNamespace" . }}
+{{- $outputNS := include "ado-token.outputNamespace" . }}
+{{- $sameNamespace := eq $credNS $outputNS }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ado-token.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ado-token.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - {{ .Values.credentialsSecret.name }}
+      {{- if not (eq .Values.credentialsSecret.name .Values.outputSecret.name) }}
+      - {{ .Values.outputSecret.name }}
+      {{- end }}
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - {{ .Values.outputSecret.name }}
+    verbs: ["update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "ado-token.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ado-token.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "ado-token.name" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ado-token.name" . }}
+    namespace: {{ .Release.Namespace }}
+{{- if not $sameNamespace }}
+---
+# Additional Role + RoleBinding in the credentials namespace when it differs
+# from the release namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ado-token.name" . }}
+  namespace: {{ $credNS }}
+  labels:
+    {{- include "ado-token.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - {{ .Values.credentialsSecret.name }}
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "ado-token.name" . }}
+  namespace: {{ $credNS }}
+  labels:
+    {{- include "ado-token.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "ado-token.name" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ado-token.name" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

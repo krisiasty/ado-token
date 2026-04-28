@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/retry"
 )
 
 type Credentials struct {
@@ -65,20 +66,26 @@ func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace
 }
 
 func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, name, key, token string) error {
-	existing, err := client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		return fmt.Errorf("getting output secret %s/%s: %w", namespace, name, err)
-	}
+	op := "updating"
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		op = "getting"
+		existing, err := client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
 
-	updated := existing.DeepCopy()
-	if updated.Data == nil {
-		updated.Data = make(map[string][]byte)
-	}
-	updated.Data[key] = []byte(token)
+		updated := existing.DeepCopy()
+		if updated.Data == nil {
+			updated.Data = make(map[string][]byte)
+		}
+		updated.Data[key] = []byte(token)
 
-	_, err = client.CoreV1().Secrets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
+		op = "updating"
+		_, err = client.CoreV1().Secrets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
+		return err
+	})
 	if err != nil {
-		return fmt.Errorf("updating output secret %s/%s: %w", namespace, name, err)
+		return fmt.Errorf("%s output secret %s/%s: %w", op, namespace, name, err)
 	}
 	return nil
 }

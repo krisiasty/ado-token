@@ -17,7 +17,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-const retryInterval = 30 * time.Second
+const (
+	retryInterval         = 30 * time.Second
+	refreshAttemptTimeout = 60 * time.Second
+)
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -48,7 +51,14 @@ func main() {
 	for {
 		state.recordAttempt()
 
-		next, refreshErr := doRefresh(ctx, cfg, kube)
+		attemptCtx, cancel := context.WithTimeout(ctx, refreshAttemptTimeout)
+		next, refreshErr := doRefresh(attemptCtx, cfg, kube)
+		cancel()
+		if ctx.Err() != nil {
+			logger.Info("shutting down")
+			return
+		}
+
 		if refreshErr != nil {
 			next = retryInterval
 			state.recordFailure(next)
@@ -73,7 +83,7 @@ func doRefresh(ctx context.Context, cfg *config.Config, kube kubernetes.Interfac
 		return 0, err
 	}
 
-	token, err := auth.FetchToken(creds.TenantID, creds.ClientID, creds.ClientSecret)
+	token, err := auth.FetchToken(ctx, creds.TenantID, creds.ClientID, creds.ClientSecret)
 	if err != nil {
 		return 0, err
 	}

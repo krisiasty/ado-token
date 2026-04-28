@@ -1,12 +1,14 @@
+{{- $name := include "ado-token.name" . }}
 {{- $credNS := include "ado-token.credentialsNamespace" . }}
 {{- $outputNS := include "ado-token.outputNamespace" . }}
 {{- $sameNamespace := eq $credNS $outputNS }}
+{{- if $sameNamespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "ado-token.name" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ $name }}
+  namespace: {{ $outputNS }}
   labels:
     {{- include "ado-token.labels" . | nindent 4 }}
 rules:
@@ -27,26 +29,24 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "ado-token.name" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ $name }}
+  namespace: {{ $outputNS }}
   labels:
     {{- include "ado-token.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "ado-token.name" . }}
+  name: {{ $name }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "ado-token.name" . }}
+    name: {{ $name }}
     namespace: {{ .Release.Namespace }}
-{{- if not $sameNamespace }}
+{{- else }}
 ---
-# Additional Role + RoleBinding in the credentials namespace when it differs
-# from the release namespace.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "ado-token.name" . }}
+  name: {{ $name }}-credentials
   namespace: {{ $credNS }}
   labels:
     {{- include "ado-token.labels" . | nindent 4 }}
@@ -60,16 +60,46 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "ado-token.name" . }}
+  name: {{ $name }}-credentials
   namespace: {{ $credNS }}
   labels:
     {{- include "ado-token.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "ado-token.name" . }}
+  name: {{ $name }}-credentials
 subjects:
   - kind: ServiceAccount
-    name: {{ include "ado-token.name" . }}
+    name: {{ $name }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}-output
+  namespace: {{ $outputNS }}
+  labels:
+    {{- include "ado-token.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - {{ .Values.outputSecret.name }}
+    verbs: ["get", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}-output
+  namespace: {{ $outputNS }}
+  labels:
+    {{- include "ado-token.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}-output
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
     namespace: {{ .Release.Namespace }}
 {{- end }}

@@ -13,8 +13,10 @@ builds:
     goarch:
       - amd64
       - arm64
+    flags:
+      - -trimpath
     ldflags:
-      - -s -w -trimpath
+      - -s -w
 
 dockers:
   - id: amd64

@@ -45,11 +45,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
 	state := &healthState{}
-	go runHealthServer(ctx, logger, cfg.HealthPort, state)
+	wg.Go(func() {
+		runHealthServer(ctx, logger, cfg.HealthPort, state, stop)
+	})
 
 	logger.Info("starting ado-token helper",
 		"output_secret", fmt.Sprintf("%s/%s", cfg.OutputSecretNamespace, cfg.OutputSecretName),
@@ -107,12 +112,10 @@ func doRefresh(ctx context.Context, cfg *config.Config, kube kubernetes.Interfac
 
 // nextRefreshInterval returns the duration to wait before the next refresh.
 // It uses 80% of the remaining token TTL as the base, with the configured
-// override acting as a cap (whichever is shorter wins).
+// override acting as a cap (whichever is shorter wins). The result is floored
+// at retryInterval to avoid hammering AAD on expired/short-TTL tokens.
 func nextRefreshInterval(expiresAt time.Time, override time.Duration) time.Duration {
-	derived := time.Duration(float64(time.Until(expiresAt)) * 0.8)
-	if derived <= 0 {
-		return retryInterval
-	}
+	derived := max(time.Duration(float64(time.Until(expiresAt))*0.8), retryInterval)
 	if override > 0 && override < derived {
 		return override
 	}
@@ -162,7 +165,7 @@ func (s *healthState) isReady() bool {
 	return s.ready
 }
 
-func runHealthServer(ctx context.Context, logger *slog.Logger, port string, state *healthState) {
+func runHealthServer(ctx context.Context, logger *slog.Logger, port string, state *healthState, cancel context.CancelFunc) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/livez", func(w http.ResponseWriter, _ *http.Request) {
@@ -185,12 +188,13 @@ func runHealthServer(ctx context.Context, logger *slog.Logger, port string, stat
 
 	go func() { //nolint:gosec // ctx is already cancelled here; a fresh context is required for the shutdown timeout
 		<-ctx.Done()
-		shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		shutCtx, shutCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutCancel()
 		_ = srv.Shutdown(shutCtx)
 	}()
 
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Error("health server error", "error", err)
+		cancel() // signal main loop to exit so the pod restarts
 	}
 }

@@ -17,6 +17,10 @@ On startup and then on a recurring schedule, the helper:
 The refresh interval is derived from the token's `expires_in` field (refreshed at 80% of
 TTL). An optional `REFRESH_INTERVAL` cap can be set to refresh more frequently.
 
+The AAD endpoint is hardcoded to the commercial Azure cloud
+(`https://login.microsoftonline.com`); sovereign clouds (Azure Government, Azure China,
+Azure Germany) are not supported.
+
 ## Deployment
 
 ### Prerequisites

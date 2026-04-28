@@ -1,4 +1,4 @@
-ado-token
+ado-token - kubernetes helper that authenticates to Azure DevOps using a service principal, obtains a bearer token, and keeps a Kubernetes secret up to date with it.
 
 Copyright 2026 Krzysztof Ciepłucha
 

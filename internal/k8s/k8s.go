@@ -53,7 +53,7 @@ func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace
 		}
 		trimmed := string(bytes.TrimSpace(v))
 		if trimmed == "" {
-			return "", fmt.Errorf("credentials secret %s/%s missing key %q", namespace, name, key)
+			return "", fmt.Errorf("credentials secret %s/%s key %q is blank", namespace, name, key)
 		}
 		return trimmed, nil
 	}

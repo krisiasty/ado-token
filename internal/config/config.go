@@ -44,7 +44,9 @@ func Load(logger *slog.Logger) (*Config, error) {
 		*r.dst = v
 	}
 
-	if raw := os.Getenv("REFRESH_INTERVAL"); raw != "" {
+	if raw, ok := os.LookupEnv("REFRESH_INTERVAL"); ok && raw == "" {
+		logger.Warn("optional env var explicitly set to empty, using default", "env", "REFRESH_INTERVAL", "default", "derive from expires_in")
+	} else if raw != "" {
 		d, err := time.ParseDuration(raw)
 		if err != nil {
 			return nil, fmt.Errorf("invalid REFRESH_INTERVAL %q: %w", raw, err)

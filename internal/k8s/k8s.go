@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -46,7 +47,7 @@ func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace
 		if !ok || len(v) == 0 {
 			return "", fmt.Errorf("credentials secret %s/%s missing key %q", namespace, name, key)
 		}
-		return string(v), nil
+		return string(bytes.TrimSpace(v)), nil
 	}
 
 	tenantID, err := get("tenant_id")

@@ -68,7 +68,7 @@ func FetchToken(ctx context.Context, tenantID, clientID, clientSecret string) (*
 	}
 
 	if tr.Error != "" {
-		return nil, fmt.Errorf("AAD error %s: %s", tr.Error, tr.ErrorDesc)
+		return nil, fmt.Errorf("AAD error %s (HTTP %d): %s", tr.Error, resp.StatusCode, tr.ErrorDesc)
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return nil, fmt.Errorf("token endpoint returned HTTP %d", resp.StatusCode)

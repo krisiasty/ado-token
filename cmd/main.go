@@ -69,11 +69,13 @@ func main() {
 			logger.Info("token refreshed", "next_refresh_in", next.Round(time.Second).String())
 		}
 
+		timer := time.NewTimer(next)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			logger.Info("shutting down")
 			return
-		case <-time.After(next):
+		case <-timer.C:
 		}
 	}
 }

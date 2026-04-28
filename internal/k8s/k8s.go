@@ -71,10 +71,10 @@ func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace
 }
 
 func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, name, key, token string) error {
-	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		existing, err := client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("getting output secret %s/%s: %w", namespace, name, err)
+			return err
 		}
 
 		updated := existing.DeepCopy()
@@ -84,9 +84,10 @@ func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, n
 		updated.Data[key] = []byte(token)
 
 		_, err = client.CoreV1().Secrets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-		if err != nil {
-			return fmt.Errorf("updating output secret %s/%s: %w", namespace, name, err)
-		}
-		return nil
+		return err
 	})
+	if err != nil {
+		return fmt.Errorf("updating output secret %s/%s: %w", namespace, name, err)
+	}
+	return nil
 }

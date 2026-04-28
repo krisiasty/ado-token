@@ -64,6 +64,9 @@ func FetchToken(ctx context.Context, tenantID, clientID, clientSecret string) (*
 
 	var tr tokenResponse
 	if err := json.Unmarshal(raw, &tr); err != nil {
+		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+			return nil, fmt.Errorf("token endpoint returned HTTP %d with non-JSON response", resp.StatusCode)
+		}
 		return nil, fmt.Errorf("parsing token response: %w", err)
 	}
 

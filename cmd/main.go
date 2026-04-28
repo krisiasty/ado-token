@@ -19,11 +19,8 @@ import (
 )
 
 const (
-	retryInterval = 30 * time.Second
-	// refreshAttemptTimeout caps a single refresh attempt; must be less than
-	// 2*retryInterval (the liveness grace window) so a stalled attempt cannot
-	// consume the entire grace period before the probe fires.
-	refreshAttemptTimeout = 60 * time.Second
+	retryInterval         = 30 * time.Second
+	refreshAttemptTimeout = 60 * time.Second // upper bound on a single AAD round-trip
 )
 
 func main() {

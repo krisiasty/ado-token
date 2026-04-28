@@ -34,9 +34,12 @@ func Load(logger *slog.Logger) (*Config, error) {
 		{"OUTPUT_SECRET_NAMESPACE", &cfg.OutputSecretNamespace},
 	}
 	for _, r := range required {
-		v := os.Getenv(r.env)
-		if v == "" {
+		v, ok := os.LookupEnv(r.env)
+		switch {
+		case !ok:
 			return nil, fmt.Errorf("required environment variable %s is not set", r.env)
+		case v == "":
+			return nil, fmt.Errorf("required environment variable %s must not be empty", r.env)
 		}
 		*r.dst = v
 	}

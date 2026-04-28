@@ -57,11 +57,11 @@ func FetchToken(ctx context.Context, tenantID, clientID, clientSecret string) (*
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxTokenResponseBytes))
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxTokenResponseBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("reading token response: %w", err)
 	}
-	if len(raw) == maxTokenResponseBytes {
+	if len(raw) > maxTokenResponseBytes {
 		return nil, fmt.Errorf("token response exceeded %d bytes", maxTokenResponseBytes)
 	}
 

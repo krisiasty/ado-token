@@ -1,4 +1,4 @@
-# ServiceAccount used by the ado-token sidecar pod.
+# ServiceAccount used by the ado-token helper pod.
 apiVersion: v1
 kind: ServiceAccount
 metadata:

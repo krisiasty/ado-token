@@ -40,7 +40,7 @@ func main() {
 	state := &healthState{}
 	go runHealthServer(ctx, logger, cfg.HealthPort, state)
 
-	logger.Info("starting ado-token sidecar",
+	logger.Info("starting ado-token helper",
 		"output_secret", fmt.Sprintf("%s/%s", cfg.OutputSecretNamespace, cfg.OutputSecretName),
 		"credentials_secret", fmt.Sprintf("%s/%s", cfg.CredentialsSecretNamespace, cfg.CredentialsSecretName),
 	)

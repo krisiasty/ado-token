@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -16,10 +18,10 @@ type Config struct {
 	HealthPort                 string
 }
 
-func Load() (*Config, error) {
+func Load(logger *slog.Logger) (*Config, error) {
 	cfg := &Config{
-		OutputSecretKey: getEnvOrDefault("OUTPUT_SECRET_KEY", "token"),
-		HealthPort:      getEnvOrDefault("HEALTH_PORT", "8080"),
+		OutputSecretKey: envOrDefault(logger, "OUTPUT_SECRET_KEY", "token"),
+		HealthPort:      envOrDefault(logger, "HEALTH_PORT", "8080"),
 	}
 
 	required := []struct {
@@ -50,11 +52,20 @@ func Load() (*Config, error) {
 		cfg.RefreshInterval = d
 	}
 
+	port, err := strconv.Atoi(cfg.HealthPort)
+	if err != nil || port < 1 || port > 65535 {
+		return nil, fmt.Errorf("HEALTH_PORT %q is not a valid port number", cfg.HealthPort)
+	}
+
 	return cfg, nil
 }
 
-func getEnvOrDefault(key, def string) string {
-	if v := os.Getenv(key); v != "" {
+func envOrDefault(logger *slog.Logger, key, def string) string {
+	v, ok := os.LookupEnv(key)
+	if ok && v == "" {
+		logger.Warn("optional env var explicitly set to empty, using default", "env", key, "default", def)
+	}
+	if v != "" {
 		return v
 	}
 	return def

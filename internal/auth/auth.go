@@ -61,23 +61,24 @@ func FetchToken(ctx context.Context, tenantID, clientID, clientSecret string) (*
 	if err != nil {
 		return nil, fmt.Errorf("reading token response: %w", err)
 	}
+	if len(raw) == maxTokenResponseBytes {
+		return nil, fmt.Errorf("token response exceeded %d bytes", maxTokenResponseBytes)
+	}
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		var tr tokenResponse
+		if json.Unmarshal(raw, &tr) == nil && tr.Error != "" {
+			return nil, fmt.Errorf("AAD error %s (HTTP %d): %s", tr.Error, resp.StatusCode, tr.ErrorDesc)
+		}
+		return nil, fmt.Errorf("token endpoint returned HTTP %d", resp.StatusCode)
+	}
 
 	var tr tokenResponse
 	if err := json.Unmarshal(raw, &tr); err != nil {
-		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-			return nil, fmt.Errorf("token endpoint returned HTTP %d with non-JSON response", resp.StatusCode)
-		}
 		return nil, fmt.Errorf("parsing token response: %w", err)
 	}
-
-	if tr.Error != "" {
-		return nil, fmt.Errorf("AAD error %s (HTTP %d): %s", tr.Error, resp.StatusCode, tr.ErrorDesc)
-	}
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("token endpoint returned HTTP %d", resp.StatusCode)
-	}
 	if tr.AccessToken == "" {
-		return nil, fmt.Errorf("token response contained no access_token (HTTP %d)", resp.StatusCode)
+		return nil, fmt.Errorf("token response contained no access_token")
 	}
 	if tr.ExpiresIn <= 0 {
 		return nil, fmt.Errorf("token response contained invalid expires_in %d", tr.ExpiresIn)

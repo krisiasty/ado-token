@@ -19,7 +19,10 @@ import (
 )
 
 const (
-	retryInterval         = 30 * time.Second
+	retryInterval = 30 * time.Second
+	// refreshAttemptTimeout caps a single refresh attempt; must be less than
+	// 2*retryInterval (the liveness grace window) so a stalled attempt cannot
+	// consume the entire grace period before the probe fires.
 	refreshAttemptTimeout = 60 * time.Second
 )
 
@@ -33,7 +36,7 @@ func main() {
 		},
 	}))
 
-	cfg, err := config.Load()
+	cfg, err := config.Load(logger)
 	if err != nil {
 		logger.Error("invalid configuration", "error", err)
 		os.Exit(1)

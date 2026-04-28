@@ -33,7 +33,11 @@ func NewClient() (kubernetes.Interface, error) {
 			return nil, fmt.Errorf("building kube client config: %w", err)
 		}
 	}
-	return kubernetes.NewForConfig(cfg)
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("creating kubernetes client: %w", err)
+	}
+	return client, nil
 }
 
 func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace, name string) (*Credentials, error) {
@@ -44,10 +48,14 @@ func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace
 
 	get := func(key string) (string, error) {
 		v, ok := secret.Data[key]
-		if !ok || len(v) == 0 {
+		if !ok {
 			return "", fmt.Errorf("credentials secret %s/%s missing key %q", namespace, name, key)
 		}
-		return string(bytes.TrimSpace(v)), nil
+		trimmed := string(bytes.TrimSpace(v))
+		if trimmed == "" {
+			return "", fmt.Errorf("credentials secret %s/%s missing key %q", namespace, name, key)
+		}
+		return trimmed, nil
 	}
 
 	tenantID, err := get("tenant_id")
@@ -71,10 +79,10 @@ func ReadCredentials(ctx context.Context, client kubernetes.Interface, namespace
 }
 
 func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, name, key, token string) error {
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		existing, err := client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
-			return err
+			return fmt.Errorf("getting output secret %s/%s: %w", namespace, name, err)
 		}
 
 		updated := existing.DeepCopy()
@@ -84,10 +92,9 @@ func UpdateSecret(ctx context.Context, client kubernetes.Interface, namespace, n
 		updated.Data[key] = []byte(token)
 
 		_, err = client.CoreV1().Secrets(namespace).Update(ctx, updated, metav1.UpdateOptions{})
-		return err
+		if err != nil {
+			return fmt.Errorf("updating output secret %s/%s: %w", namespace, name, err)
+		}
+		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("updating output secret %s/%s: %w", namespace, name, err)
-	}
-	return nil
 }

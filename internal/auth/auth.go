@@ -12,7 +12,7 @@ import (
 
 const (
 	adoScope        = "499b84ac-1321-427f-aa17-267ca6975798/.default"
-	tokenURLPattern = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+	tokenURLPattern = "https://login.microsoftonline.com/%s/oauth2/v2.0/token" //nolint:gosec
 )
 
 type Token struct {
@@ -37,11 +37,11 @@ func FetchToken(tenantID, clientID, clientSecret string) (*Token, error) {
 		"scope":         {adoScope},
 	}
 
-	resp, err := http.Post(endpoint, "application/x-www-form-urlencoded", strings.NewReader(body.Encode())) //nolint:noctx
+	resp, err := http.Post(endpoint, "application/x-www-form-urlencoded", strings.NewReader(body.Encode())) //nolint:noctx,gosec
 	if err != nil {
 		return nil, fmt.Errorf("token request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {

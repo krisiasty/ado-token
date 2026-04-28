@@ -1,0 +1,43 @@
+# ServiceAccount used by the ado-token sidecar pod.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ado-token
+  namespace: argocd  # adjust if deploying outside argocd namespace
+---
+# Role granting the minimum required secret access.
+#
+# resourceNames locks permissions to the two specific secrets only.
+# Note: 'create' cannot be combined with resourceNames in Kubernetes RBAC,
+# so the output secret must be pre-created (see secret.yaml).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ado-token
+  namespace: argocd  # must match the namespace(s) of both secrets
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - ado-credentials   # CREDENTIALS_SECRET_NAME — contains tenant_id, client_id, client_secret
+      - ado-token         # OUTPUT_SECRET_NAME — written with the bearer token
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - ado-token         # OUTPUT_SECRET_NAME only
+    verbs: ["update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ado-token
+  namespace: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ado-token
+subjects:
+  - kind: ServiceAccount
+    name: ado-token
+    namespace: argocd

@@ -1,0 +1,73 @@
+version: 2
+
+project_name: ado-token
+
+builds:
+  - id: ado-token
+    main: ./cmd
+    binary: ado-token
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -trimpath
+
+dockers:
+  - id: amd64
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile.goreleaser
+    use: buildx
+    image_templates:
+      - "ghcr.io/krisiasty/ado-token:{{ .Tag }}-amd64"
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/krisiasty/ado-token"
+
+  - id: arm64
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile.goreleaser
+    use: buildx
+    image_templates:
+      - "ghcr.io/krisiasty/ado-token:{{ .Tag }}-arm64"
+    build_flag_templates:
+      - "--platform=linux/arm64"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source=https://github.com/krisiasty/ado-token"
+
+docker_manifests:
+  - name_template: "ghcr.io/krisiasty/ado-token:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/krisiasty/ado-token:{{ .Tag }}-amd64"
+      - "ghcr.io/krisiasty/ado-token:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/krisiasty/ado-token:latest"
+    image_templates:
+      - "ghcr.io/krisiasty/ado-token:{{ .Tag }}-amd64"
+      - "ghcr.io/krisiasty/ado-token:{{ .Tag }}-arm64"
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

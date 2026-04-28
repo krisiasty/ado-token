@@ -52,7 +52,7 @@ func main() {
 		if refreshErr != nil {
 			next = retryInterval
 			state.recordFailure(next)
-			logger.Error("token refresh failed", "error", refreshErr, "retry_in", next)
+			logger.Error("token refresh failed", "error", refreshErr, "retry_in", next.Round(time.Second).String())
 		} else {
 			state.recordSuccess(next)
 			logger.Info("token refreshed", "next_refresh_in", next.Round(time.Second).String())

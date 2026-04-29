@@ -5,7 +5,7 @@ obtains a bearer token, and keeps a Kubernetes secret up to date with it.
 
 Intended as a companion to [ArgoCD Image Updater](https://argocd-image-updater.readthedocs.io/)
 when checking Azure Container Registry for new image tags and updating Azure DevOps Git
-repositories. Unfortunatelly, ArgoCD Image Updater cannot authenticate to Azure DevOps using
+repositories. Unfortunately, ArgoCD Image Updater cannot authenticate to Azure DevOps using
 Service Principal credentials, and Microsoft is discouraging using Personal Access Tokens.
 This is where **ado-token** helps - it allows Image Updater or any other CI tool, which only
 supports basic authentication / bearer tokens, to authenticate with short-lived tokens generated
@@ -13,12 +13,13 @@ dynamically for Service Principal.
 
 ArgoCD Image Updater describes other method (essentially workaround) where you can use external script
 called to obtain tokens. This approach has several drawbacks, though:
+
 - Manageability: scripts are harder to standardize than Kubernetes Secrets, pull secrets,
 or registry-level config. You now manage script distribution, executable permissions, dependencies,
 cloud CLI versions, token TTL alignment, caching behavior, and observability.
 The docs mention mounting via ConfigMap or copying with an init container, both of which add operational moving parts.
 - Security: the script also leak secrets through stdout mistakes, logs, shell tracing, error messages.
-- Error handling: Image Updater expects exactly one stdout line in <username>:<password> format,
+- Error handling: Image Updater expects exactly one stdout line in `username:password` format,
 with no arguments passed to the script. That is brittle: warnings, retries, partial failures, expired
 upstream credentials, rate limits, or extra output can turn auth into opaque registry failures.
 - Performance: the docs explicitly warn that executing scripts for credentials can become expensive,
@@ -28,6 +29,7 @@ can add latency, CPU/process overhead, and third-party token-service calls.
 Having single dedicated tool which can handle all of those challenges is usually much better solution.
 
 ## References
+
 [https://learn.microsoft.com/en-us/azure/devops/repos/git/auth-overview](https://learn.microsoft.com/en-us/azure/devops/repos/git/auth-overview)
 
 [https://argocd-image-updater.readthedocs.io/en/stable/basics/authentication/#using-a-script-to-generate-credentials](https://argocd-image-updater.readthedocs.io/en/stable/basics/authentication/#using-a-script-to-generate-credentials)

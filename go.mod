@@ -3,9 +3,9 @@ module github.com/krisiasty/ado-token
 go 1.26.6
 
 require (
-	k8s.io/api v0.36.4
-	k8s.io/apimachinery v0.36.4
-	k8s.io/client-go v0.36.4
+	k8s.io/api v0.37.0
+	k8s.io/apimachinery v0.37.0
+	k8s.io/client-go v0.37.0
 )
 
 require (

@@ -32,3 +32,6 @@ go.work.sum
 # .vscode/
 
 .claude/
+
+# graphify knowledge graph output
+graphify-out/

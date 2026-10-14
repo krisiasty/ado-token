@@ -12,7 +12,7 @@ spec:
     helm:
       values: |
         image:
-          tag: "v1.1.6"
+          tag: "v1.1.7"
         credentialsSecret:
           name: ado-credentials
         outputSecret:
